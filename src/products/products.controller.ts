@@ -9,7 +9,7 @@ import {
 	Post,
 } from "@nestjs/common"
 import type { Product } from "./models/products.model"
-import type { ProductsService } from "./products.service"
+import { ProductsService } from "./products.service"
 
 @Controller("products")
 export class ProductsController {

@@ -44,7 +44,14 @@ export class ProductsService {
 	}
 
 	remove(id: number): void {
+		const productToRemove = this.products.find((p) => p.id === id)
+
+		if (!productToRemove) {
+			throw new NotFoundException("Product not found")
+		}
+
 		const updatedProducts = this.products.filter((p) => p.id !== id)
+
 		this.products = updatedProducts
 	}
 }
