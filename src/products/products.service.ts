@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common"
-import type { Product } from "./models/products.model"
+import { CreateProductDto } from "./dto/create-product.dto"
+import { UpdateProductDto } from "./dto/update-product.dto"
+import type { Product } from "./entities/products.entity"
 
 @Injectable()
 export class ProductsService {
@@ -20,9 +22,9 @@ export class ProductsService {
 		return product
 	}
 
-	create(data: Omit<Product, "id">): Product {
+	create(createProductDto: CreateProductDto): Product {
 		const product: Product = {
-			...data,
+			...createProductDto,
 			id: this.nextId++,
 		}
 
@@ -31,14 +33,14 @@ export class ProductsService {
 		return product
 	}
 
-	update(id: number, data: Partial<Omit<Product, "id">>): Product {
+	update(id: number, updateProductDto: UpdateProductDto): Product {
 		const product = this.products.find((p) => p.id === id)
 
 		if (!product) {
 			throw new NotFoundException("Product not found")
 		}
 
-		Object.assign(product, data)
+		Object.assign(product, updateProductDto)
 
 		return product
 	}

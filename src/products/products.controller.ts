@@ -8,7 +8,7 @@ import {
 	Patch,
 	Post,
 } from "@nestjs/common"
-import type { Product } from "./models/products.model"
+import type { Product } from "./entities/products.entity"
 import { ProductsService } from "./products.service"
 
 @Controller("products")
