@@ -9,7 +9,8 @@ import {
 	Post,
 } from "@nestjs/common"
 import { CustomersService } from "./customers.service"
-import type { Customer } from "./models/customers.model"
+import { UpdateCustomerDto } from "./dto/update-customer.dto"
+import type { Customer } from "./entities/customers.entity"
 
 @Controller("customers")
 export class CustomersController {
@@ -33,7 +34,7 @@ export class CustomersController {
 	@Patch(":id")
 	update(
 		@Param("id", ParseIntPipe) id: number,
-		@Body() body: Partial<Omit<Customer, "id">>,
+		@Body() body: UpdateCustomerDto,
 	): Customer {
 		return this.customersService.update(id, body)
 	}

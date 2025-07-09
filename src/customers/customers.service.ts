@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common"
-import type { Customer } from "./models/customers.model"
+import { CreateCustomerDto } from "./dto/create-customer.dto"
+import { UpdateCustomerDto } from "./dto/update-customer.dto"
+import type { Customer } from "./entities/customers.entity"
 
 @Injectable()
 export class CustomersService {
@@ -20,9 +22,9 @@ export class CustomersService {
 		return cust
 	}
 
-	create(data: Omit<Customer, "id">): Customer {
+	create(createCustomerDto: CreateCustomerDto): Customer {
 		const newCustomer: Customer = {
-			...data,
+			...createCustomerDto,
 			id: this.nextId++,
 		}
 
@@ -31,14 +33,14 @@ export class CustomersService {
 		return newCustomer
 	}
 
-	update(id: number, data: Partial<Omit<Customer, "id">>): Customer {
+	update(id: number, updateCustomerDto: UpdateCustomerDto): Customer {
 		const cust = this.customers.find((c) => c.id === id)
 
 		if (!cust) {
 			throw new NotFoundException("User not found")
 		}
 
-		Object.assign(cust, data)
+		Object.assign(cust, updateCustomerDto)
 
 		return cust
 	}

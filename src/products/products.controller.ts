@@ -8,6 +8,7 @@ import {
 	Patch,
 	Post,
 } from "@nestjs/common"
+import { UpdateProductDto } from "./dto/update-product.dto"
 import type { Product } from "./entities/products.entity"
 import { ProductsService } from "./products.service"
 
@@ -33,7 +34,7 @@ export class ProductsController {
 	@Patch(":id")
 	update(
 		@Param("id", ParseIntPipe) id: number,
-		@Body() body: Partial<Omit<Product, "id">>,
+		@Body() body: UpdateProductDto,
 	): Product {
 		return this.productsService.update(id, body)
 	}
