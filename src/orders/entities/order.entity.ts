@@ -4,8 +4,10 @@ import {
 	Entity,
 	JoinColumn,
 	ManyToOne,
+	OneToMany,
 	PrimaryGeneratedColumn,
 } from "typeorm"
+import { OrderItem } from "./order-item.entity"
 
 @Entity()
 export class Order {
@@ -14,12 +16,24 @@ export class Order {
 
 	@ManyToOne(() => Customer, { eager: true })
 	@JoinColumn({ name: "customerId" })
-	customerId: Customer
+	customer: Customer
 
-	@Column("int")
-	productIds: number[]
+	@OneToMany(
+		() => OrderItem,
+		(orderItem) => orderItem.order,
+		{ cascade: true, eager: true },
+	)
+	orderItems: OrderItem[]
+
+	@Column("decimal")
 	totalAmount: number
+
+	@Column()
 	status: "pending" | "paid" | "shipped" | "cancelled"
+
+	@Column()
 	createdAt: Date
+
+	@Column()
 	updatedAt: Date
 }

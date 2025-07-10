@@ -13,7 +13,7 @@ import { ProductsModule } from "./products/products.module"
 		OrdersModule,
 		TypeOrmModule.forRoot({
 			type: "postgres",
-			host: "postgres",
+			host: "localhost",
 			port: 5432,
 			username: "postgres",
 			password: "1234",

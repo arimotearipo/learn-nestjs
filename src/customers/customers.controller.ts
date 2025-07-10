@@ -17,30 +17,30 @@ export class CustomersController {
 	constructor(private readonly customersService: CustomersService) {}
 
 	@Get()
-	findAll(): Customer[] {
+	async findAll(): Promise<Customer[]> {
 		return this.customersService.findAll()
 	}
 
 	@Get(":id")
-	findOne(@Param("id", ParseIntPipe) id: number): Customer {
+	async findOne(@Param("id", ParseIntPipe) id: number): Promise<Customer> {
 		return this.customersService.findOne(id)
 	}
 
 	@Post()
-	create(@Body() body: Omit<Customer, "id">): Customer {
+	async create(@Body() body: Omit<Customer, "id">): Promise<Customer> {
 		return this.customersService.create(body)
 	}
 
 	@Patch(":id")
-	update(
+	async update(
 		@Param("id", ParseIntPipe) id: number,
 		@Body() body: UpdateCustomerDto,
-	): Customer {
+	): Promise<Customer> {
 		return this.customersService.update(id, body)
 	}
 
 	@Delete(":id")
-	delete(@Param("id", ParseIntPipe) id: number): void {
+	async delete(@Param("id", ParseIntPipe) id: number): Promise<void> {
 		this.customersService.delete(id)
 	}
 }

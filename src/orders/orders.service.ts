@@ -1,50 +1,76 @@
-import {
-	BadRequestException,
-	Injectable,
-	NotFoundException,
-} from "@nestjs/common"
+import { Injectable, NotFoundException } from "@nestjs/common"
+import { InjectRepository } from "@nestjs/typeorm"
+import { Customer } from "src/customers/entities/customers.entity"
+import { Product } from "src/products/entities/products.entity"
+import { In, Repository } from "typeorm"
 import { CreateOrderDto } from "./dto/create-order.dto"
+import { CreateOrderItemDto } from "./dto/create-order-item.dto"
 import { UpdateOrderDto } from "./dto/update-order.dto"
 import { Order } from "./entities/order.entity"
 
 @Injectable()
 export class OrdersService {
-	private orders: Order[] = []
-	private nextId = 1
+	constructor(
+		@InjectRepository(Order)
+		private readonly orderRepository: Repository<Order>,
+		@InjectRepository(Customer)
+		private readonly customerRepository: Repository<Customer>,
+		@InjectRepository(Product)
+		private readonly productRepository: Repository<Product>,
+	) {}
 
-	// hardcoding product prices because we don't have DB
-	private productPrices: Record<number, number> = {
-		1: 10,
-		2: 5.99,
-		3: 2.5,
-		4: 69.2,
-		5: 10.23,
-		6: 12.32,
-	}
+	async create(createOrderDto: CreateOrderDto): Promise<Order> {
+		const customer = await this.customerRepository.findOneBy({
+			id: createOrderDto.customerId,
+		})
 
-	create(createOrderDto: CreateOrderDto): Order {
-		const totalAmount = this.calculateTotalAmount(createOrderDto.productIds)
-
-		const newOrder: Order = {
-			...createOrderDto,
-			id: this.nextId++,
-			createdAt: new Date(),
-			updatedAt: new Date(),
-			status: "pending",
-			totalAmount,
+		if (!customer) {
+			throw new NotFoundException(
+				`No customer with ID ${createOrderDto.customerId}`,
+			)
 		}
 
-		this.orders.push(newOrder)
+		const productIds = createOrderDto.orderItems.map((item) => item.productId)
+		const products = await this.productRepository.findBy({ id: In(productIds) })
+		const productMap = new Map(products.map((p) => [p.id, p]))
 
-		return newOrder
+		const orderItems = createOrderDto.orderItems.map((item) => {
+			const product = productMap.get(item.productId)
+
+			if (!product) {
+				throw new NotFoundException(
+					`Product with ID ${item.productId} does not exist`,
+				)
+			}
+
+			return {
+				product,
+				quantity: item.quantity,
+			}
+		})
+
+		const totalAmount = await this.calculateTotalAmount(
+			createOrderDto.orderItems,
+		)
+
+		const createdOrder = this.orderRepository.create({
+			customer,
+			orderItems,
+			totalAmount,
+			status: "pending",
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		})
+
+		return this.orderRepository.save(createdOrder)
 	}
 
-	findAll(): Order[] {
-		return this.orders
+	async findAll(): Promise<Order[]> {
+		return this.orderRepository.find()
 	}
 
-	findOne(id: number): Order {
-		const order = this.orders.find((o) => o.id === id)
+	async findOne(id: number): Promise<Order> {
+		const order = await this.orderRepository.findOneBy({ id })
 
 		if (!order) {
 			throw new NotFoundException("Order not found")
@@ -53,49 +79,63 @@ export class OrdersService {
 		return order
 	}
 
-	update(id: number, updateOrderDto: UpdateOrderDto) {
-		const orderIndex = this.orders.findIndex((o) => o.id === id)
+	async update(id: number, updateOrderDto: UpdateOrderDto): Promise<Order> {
+		const orderToUpdate = await this.orderRepository.findOneBy({ id })
 
-		if (orderIndex < 0) {
+		if (!orderToUpdate) {
 			throw new NotFoundException("Order not found")
 		}
 
-		const totalAmount = this.calculateTotalAmount(updateOrderDto.productIds)
+		const totalAmount = await this.calculateTotalAmount(
+			updateOrderDto.orderItems,
+		)
 
-		const updatedOrder: Order = {
-			...this.orders[orderIndex],
+		const updatedOrder = Object.assign(orderToUpdate, {
 			...updateOrderDto,
-			updatedAt: new Date(),
 			totalAmount,
-		}
+		})
 
-		this.orders[orderIndex] = updatedOrder
-
-		return updatedOrder
+		return this.orderRepository.save(updatedOrder)
 	}
 
-	remove(id: number) {
-		const order = this.findOne(id)
-
-		if (order) {
-			this.orders.filter((o) => o.id !== id)
-		}
+	async remove(id: number) {
+		return this.orderRepository.delete(id)
 	}
 
-	calculateTotalAmount(productIds: number[]) {
+	private async calculateTotalAmount(
+		orderItems: CreateOrderItemDto[],
+	): Promise<number> {
+		const allOrderItemIds = orderItems.map((o) => o.productId)
+		const products = await this.productRepository.findBy({
+			id: In(allOrderItemIds),
+		})
+
+		// map of existing product IDs in our database based on productIds
+		const productMap = new Map(products.map((p) => [p.id, p]))
+
 		let totalAmount = 0
-		for (const productId of productIds) {
-			const price = this.productPrices[productId]
+		for (const orderItem of orderItems) {
+			const product = productMap.get(orderItem.productId)
 
-			if (price === undefined) {
-				throw new BadRequestException(
-					`Product with ID ${productId} does not have a price`,
+			if (!product) {
+				throw new NotFoundException(
+					`Product with ID ${orderItem.productId} does not exist`,
 				)
 			}
 
-			totalAmount += price
+			totalAmount += product.price * orderItem.quantity
 		}
 
 		return totalAmount
+	}
+
+	async findByCustomer(customerId: number): Promise<Order[]> {
+		return this.orderRepository
+			.createQueryBuilder("order")
+			.leftJoinAndSelect("order.customer", "customer")
+			.leftJoinAndSelect("order.orderItems", "orderItem")
+			.leftJoinAndSelect("orderItem.product", "product")
+			.where("customer.id = :customerId", { customerId })
+			.getMany()
 	}
 }

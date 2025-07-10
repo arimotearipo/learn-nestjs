@@ -1,19 +1,23 @@
 import { Injectable, NotFoundException } from "@nestjs/common"
+import { InjectRepository } from "@nestjs/typeorm"
+import { Repository } from "typeorm"
 import { CreateCustomerDto } from "./dto/create-customer.dto"
 import { UpdateCustomerDto } from "./dto/update-customer.dto"
-import type { Customer } from "./entities/customers.entity"
+import { Customer } from "./entities/customers.entity"
 
 @Injectable()
 export class CustomersService {
-	private customers: Customer[] = []
-	private nextId = 1
+	constructor(
+		@InjectRepository(Customer)
+		private readonly customerRepository: Repository<Customer>,
+	) {}
 
-	findAll(): Customer[] {
-		return this.customers
+	async findAll(): Promise<Customer[]> {
+		return this.customerRepository.find()
 	}
 
-	findOne(id: number) {
-		const cust = this.customers.find((c) => c.id === id)
+	async findOne(id: number): Promise<Customer> {
+		const cust = await this.customerRepository.findOneBy({ id })
 
 		if (!cust) {
 			throw new NotFoundException("User not found")
@@ -22,38 +26,28 @@ export class CustomersService {
 		return cust
 	}
 
-	create(createCustomerDto: CreateCustomerDto): Customer {
-		const newCustomer: Customer = {
-			...createCustomerDto,
-			id: this.nextId++,
-		}
+	async create(createCustomerDto: CreateCustomerDto): Promise<Customer> {
+		const newCustomer = this.customerRepository.create(createCustomerDto)
 
-		this.customers.push(newCustomer)
-
-		return newCustomer
+		return this.customerRepository.save(newCustomer)
 	}
 
-	update(id: number, updateCustomerDto: UpdateCustomerDto): Customer {
-		const cust = this.customers.find((c) => c.id === id)
+	async update(
+		id: number,
+		updateCustomerDto: UpdateCustomerDto,
+	): Promise<Customer> {
+		const customerToUpdate = await this.findOne(id)
 
-		if (!cust) {
-			throw new NotFoundException("User not found")
-		}
+		Object.assign(customerToUpdate, updateCustomerDto)
 
-		Object.assign(cust, updateCustomerDto)
-
-		return cust
+		return this.customerRepository.save(customerToUpdate)
 	}
 
-	delete(id: number): void {
-		const customerToDelete = this.customers.find((c) => c.id === id)
+	async delete(id: number): Promise<void> {
+		const result = await this.customerRepository.delete(id)
 
-		if (!customerToDelete) {
-			throw new NotFoundException("Customer not found")
+		if (!result.affected) {
+			throw new NotFoundException("No customer found")
 		}
-
-		const updatedCustomers = this.customers.filter((c) => c.id !== id)
-
-		this.customers = updatedCustomers
 	}
 }

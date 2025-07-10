@@ -1,4 +1,6 @@
-import { IsArray, IsNotEmpty, IsNumber, IsPositive } from "class-validator"
+import { Type } from "class-transformer"
+import { IsArray, IsNumber, IsPositive, ValidateNested } from "class-validator"
+import { CreateOrderItemDto } from "./create-order-item.dto"
 
 export class CreateOrderDto {
 	@IsNumber()
@@ -6,7 +8,7 @@ export class CreateOrderDto {
 	customerId: number
 
 	@IsArray()
-	@IsNumber({}, { each: true })
-	@IsNotEmpty({ each: true })
-	productIds: number[]
+	@ValidateNested({ each: true })
+	@Type(() => CreateOrderItemDto)
+	orderItems: CreateOrderItemDto[]
 }
