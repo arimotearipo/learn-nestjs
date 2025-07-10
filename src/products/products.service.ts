@@ -1,19 +1,23 @@
 import { Injectable, NotFoundException } from "@nestjs/common"
+import { InjectRepository } from "@nestjs/typeorm"
+import { Repository } from "typeorm"
 import { CreateProductDto } from "./dto/create-product.dto"
 import { UpdateProductDto } from "./dto/update-product.dto"
-import type { Product } from "./entities/products.entity"
+import { Product } from "./entities/products.entity"
 
 @Injectable()
 export class ProductsService {
-	private products: Product[] = []
-	private nextId = 1
+	constructor(
+		@InjectRepository(Product)
+		private readonly productRepository: Repository<Product>,
+	) {}
 
-	findAll(): Product[] {
-		return this.products
+	async findAll(): Promise<Product[]> {
+		return this.productRepository.find()
 	}
 
-	findOne(id: number): Product {
-		const product = this.products.find((p) => p.id === id)
+	async findOne(id: number): Promise<Product> {
+		const product = await this.productRepository.findOneBy({ id })
 
 		if (!product) {
 			throw new NotFoundException("Product not found")
@@ -22,19 +26,17 @@ export class ProductsService {
 		return product
 	}
 
-	create(createProductDto: CreateProductDto): Product {
-		const product: Product = {
-			...createProductDto,
-			id: this.nextId++,
-		}
+	async create(createProductDto: CreateProductDto): Promise<Product> {
+		const newProduct = this.productRepository.create(createProductDto)
 
-		this.products.push(product)
-
-		return product
+		return this.productRepository.save(newProduct)
 	}
 
-	update(id: number, updateProductDto: UpdateProductDto): Product {
-		const product = this.products.find((p) => p.id === id)
+	async update(
+		id: number,
+		updateProductDto: UpdateProductDto,
+	): Promise<Product> {
+		const product = await this.findOne(id)
 
 		if (!product) {
 			throw new NotFoundException("Product not found")
@@ -42,18 +44,14 @@ export class ProductsService {
 
 		Object.assign(product, updateProductDto)
 
-		return product
+		return this.productRepository.save(product)
 	}
 
-	remove(id: number): void {
-		const productToRemove = this.products.find((p) => p.id === id)
+	async remove(id: number): Promise<void> {
+		const result = await this.productRepository.delete(id)
 
-		if (!productToRemove) {
+		if (!result.affected) {
 			throw new NotFoundException("Product not found")
 		}
-
-		const updatedProducts = this.products.filter((p) => p.id !== id)
-
-		this.products = updatedProducts
 	}
 }
